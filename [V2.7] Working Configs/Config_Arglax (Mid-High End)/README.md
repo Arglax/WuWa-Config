@@ -3,6 +3,11 @@ This config is for **Android** (and hopefully **iOS**) for **WuWa Game Version 2
 Tested on **Poco X6 Pro (`MediaTek 8300 Ultra`)** — provides good graphics quality and smooth performance.  
 - Vulkan is forced in this config via `Engine.ini`
 
+Config_1 - Highest quality of all, especially reflections  
+Config_2 - Compatibility Config in case Config_1 does not work well  
+Config_3 - Reflection and View Distance Quality Reduced, most optimized for mobile config  
+
+
 *This is being further tested by users in the Discord channel.*  
 So far, there are no new issues reported.  
 
@@ -18,7 +23,7 @@ So far, there are no new issues reported.
    *Update (Oct 15, 2025):* Heating only occurs during low battery + mobile data + charging.
 
 3. **Black screen flickering/blinking** during game loading screens.  
-   - Cause unknown, but in-game is stable.  
+   - scalability groups is most likely the culprit, but in-game is stable.  
    → **Fix:** Same as Issue #1 — delete `DeviceProfiles.ini`.
 
 ---
@@ -48,3 +53,4 @@ If your device crashes, follow these steps:
 6. Join the **Discord server** → Ask in **issues/config-help** channel.
 
 7. If all else fails → **Stop using config files**.
+
