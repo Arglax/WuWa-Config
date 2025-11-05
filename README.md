@@ -1,20 +1,10 @@
 
 <h1 align="center">📢 Announcements 📢</h1>
 
-Recent Changes:  
-October 26, 2025  
-1. Removed Community Configs  (If you need them, check discord)  
-2. Mobile RT configs will be re-updated in the future.  
-
-October 20, 2025  
-1. Moved and created "Working Configs" Folder  
-2. Contains at least 4 presets of configs that works for low-end to high-end devices  
-3. Clean and Low-End Configs need initial and further testing from users with low-end devices for more accurate benchmarking  
-*Should there be any problems, submit an issue here in GitHub or voice it out in our discord channel
-
-October 18, 2025  
-1. A new website for generating Engine.ini is being developed (https://arglax.github.io/Mobile-WuWa-Config/index.html)
-2. I'll try to work on putting as many practical variables there  
+# Recent Changes:  
+## November 5, 2025  
+> *Added Config_3 under Config_Arglax Folder*  
+> *Updated various READme files*  
 
 Notes:
 > 🛠️ Users are encouraged to use configs in the *Old Configs* folder if the latest ones are incompatible with their devices.  
