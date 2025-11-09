@@ -60,14 +60,10 @@ r.Streaming.MipBias=-2
     if (incBtn) incBtn.addEventListener("click", () => { slider.value = Math.min(11, +slider.value + 1); updateOutput(); });
     if (resetBtn) resetBtn.addEventListener("click", () => { slider.value = 5; updateOutput(); });
 
-    // initialize from storage or default
     try {
         const stored = localStorage.getItem("textureConfig");
-        if (stored && stored.length) {
-            output.textContent = stored;
-        } else {
-            updateOutput();
-        }
+        if (stored && stored.length) output.textContent = stored;
+        else updateOutput();
     } catch (e) { updateOutput(); }
 })();
 
@@ -81,38 +77,23 @@ r.Streaming.MipBias=-2
     const shadowInc = document.getElementById("shadowInc");
     const shadowReset = document.getElementById("shadowReset");
     const shadowModeEl = document.getElementById("shadowMode");
-
-    if (!shadowOutput || !shadowSlider) {
-        return;
-    }
+    if (!shadowOutput || !shadowSlider) return;
 
     let shadowMode = "basic";
 
-    if (shadowDec) shadowDec.onclick = () => {
-        shadowSlider.value = Math.max(0, +shadowSlider.value - 1);
-        updateShadowQuality();
-    };
-    if (shadowInc) shadowInc.onclick = () => {
-        shadowSlider.value = Math.min(11, +shadowSlider.value + 1);
-        updateShadowQuality();
-    };
-    if (shadowReset) shadowReset.onclick = () => {
-        shadowSlider.value = 5;
-        updateShadowQuality();
-    };
+    if (shadowDec) shadowDec.onclick = () => { shadowSlider.value = Math.max(0, +shadowSlider.value - 1); updateShadowQuality(); };
+    if (shadowInc) shadowInc.onclick = () => { shadowSlider.value = Math.min(11, +shadowSlider.value + 1); updateShadowQuality(); };
+    if (shadowReset) shadowReset.onclick = () => { shadowSlider.value = 5; updateShadowQuality(); };
 
     window.setShadowMode = function (mode) {
         shadowMode = mode;
-        if (shadowModeEl) {
-            shadowModeEl.innerText = "Current Mode: " + mode.charAt(0).toUpperCase() + mode.slice(1);
-        }
+        if (shadowModeEl) shadowModeEl.innerText = "Current Mode: " + mode.charAt(0).toUpperCase() + mode.slice(1);
         updateShadowQuality();
     };
 
     window.updateShadowQuality = function () {
         const level = +shadowSlider.value;
         let result = "\n";
-
         if (level === 0) {
             result += `r.ShadowQuality=0
 r.Shadow.MaxResolution=0
@@ -120,11 +101,10 @@ r.Shadow.MinResolution=0
 r.Shadow.FarShadow=0
 r.DistanceFieldShadowing=0`;
             shadowOutput.textContent = result;
-            try { localStorage.setItem("shadowConfig", result); } catch (e) { }
+            try { localStorage.setItem("shadowConfig", result); } catch (e) {}
             return;
         }
 
-        // smooth exponential base resolution snapped to 256
         let baseRes = 256 * Math.pow(2, (level - 1) / 2.5);
         baseRes = Math.round(baseRes / 256) * 256;
         if (baseRes > 8192) baseRes = 8192;
@@ -147,8 +127,7 @@ r.Shadow.MaxResolution=${baseRes}
 r.Shadow.PCFMaxSamples=${pcfSamples}
 r.Shadow.TexelsPerPixel=${(4 + level / 2).toFixed(1)}
 r.ContactShadows=${level >= 3 ? 1 : 0}
-r.DistanceFieldShadowing=${level >= 7 ? 1 : 0}
-`.trim();
+r.DistanceFieldShadowing=${level >= 7 ? 1 : 0}`.trim();
         } else {
             result += `
 r.ShadowQuality=${shadowQuality}
@@ -162,28 +141,21 @@ r.Shadow.PCFMaxSamples=${pcfSamples}
 r.Shadow.TexelsPerPixel=${(4 + level / 2).toFixed(1)}
 r.ContactShadows=${level >= 3 ? 1 : 0}
 r.DistanceFieldShadowing=${level >= 7 ? 1 : 0}
-r.DistanceFieldShadowDistance=${level >= 7 ? 1000000 + level * 40000 : 0}
-`.trim();
+r.DistanceFieldShadowDistance=${level >= 7 ? 1000000 + level * 40000 : 0}`.trim();
         }
-
         shadowOutput.textContent = result;
-        try { localStorage.setItem("shadowConfig", result); } catch (e) { }
+        try { localStorage.setItem("shadowConfig", result); } catch (e) {}
     };
 
-    // initialize
     try {
         const stored = localStorage.getItem("shadowConfig");
-        if (stored && stored.length) {
-            shadowOutput.textContent = stored;
-        } else {
+        if (stored && stored.length) shadowOutput.textContent = stored;
+        else {
             shadowMode = "basic";
             if (shadowModeEl) shadowModeEl.innerText = "Current Mode: Basic";
             updateShadowQuality();
         }
-    } catch (e) {
-        shadowMode = "basic";
-        updateShadowQuality();
-    }
+    } catch (e) { shadowMode = "basic"; updateShadowQuality(); }
 })();
 
 /***************************************************************************
@@ -195,7 +167,6 @@ r.DistanceFieldShadowDistance=${level >= 7 ? 1000000 + level * 40000 : 0}
     const gcInc = document.getElementById("gcInc");
     const gcReset = document.getElementById("gcReset");
     if (!gcOutput) return;
-
     const gcSettings = {
         aggressiveness: 5,
         generateCommands() {
@@ -216,8 +187,7 @@ gc.ForceGCAtRegularInterval=False
 gc.MinGCClusterSize=4
 gc.MaxGCClusterSize=64
 gc.VerifyUObjectsAreNotFGCObjects=False
-gc.DisableAutomaticGC=False
-`.trim();
+gc.DisableAutomaticGC=False`.trim();
         },
         updateOutput() {
             const txt = this.generateCommands();
@@ -225,12 +195,9 @@ gc.DisableAutomaticGC=False
             try { localStorage.setItem("gcConfig", txt); } catch (e) {}
         }
     };
-
     if (gcDec) gcDec.addEventListener("click", () => { gcSettings.aggressiveness = Math.max(0, gcSettings.aggressiveness - 1); gcSettings.updateOutput(); });
     if (gcInc) gcInc.addEventListener("click", () => { gcSettings.aggressiveness = Math.min(10, gcSettings.aggressiveness + 1); gcSettings.updateOutput(); });
     if (gcReset) gcReset.addEventListener("click", () => { gcSettings.aggressiveness = 5; gcSettings.updateOutput(); });
-
-    // Initialize
     gcSettings.updateOutput();
 })();
 
@@ -240,13 +207,10 @@ gc.DisableAutomaticGC=False
 (function () {
     const output = document.getElementById("specialTogglesOutput");
     if (!output) return;
-
     function updateOutput() {
         output.textContent = specialToggles.trim();
         try { localStorage.setItem("specialTogglesConfig", output.textContent.trim()); } catch (e) {}
     }
-
-    // Attach handlers (preserve all button content strings)
     const enableVulkanBtn = document.getElementById("enableVulkanBtn");
     const forceVulkanBtn = document.getElementById("forceVulkanBtn");
     const enableFrameGenBtn = document.getElementById("enableFrameGenBtn");
@@ -255,40 +219,32 @@ gc.DisableAutomaticGC=False
     const addAllBtn = document.getElementById("addAllSpecialTogglesBtn");
 
     if (enableVulkanBtn) enableVulkanBtn.addEventListener("click", () => {
-        specialToggles = `
-r.Mobile.DeviceEvaluation=3
+        specialToggles = `r.Mobile.DeviceEvaluation=3
 r.Android.DisableVulkanSM5Support=0
-r.Android.DisableVulkanSupport=0
-`.trim();
+r.Android.DisableVulkanSupport=0`.trim();
         updateOutput();
     });
 
     if (forceVulkanBtn) forceVulkanBtn.addEventListener("click", () => {
-        specialToggles = `
-r.Mobile.DeviceEvaluation=3
+        specialToggles = `r.Mobile.DeviceEvaluation=3
 r.Android.DisableOpenGLES31Support=1
 r.Android.DisableVulkanSM5Support=0
-r.Android.DisableVulkanSupport=0
-`.trim();
+r.Android.DisableVulkanSupport=0`.trim();
         updateOutput();
     });
 
     if (enableFrameGenBtn) enableFrameGenBtn.addEventListener("click", () => {
-        if (!specialToggles.includes("r.Kuro.AFME.Enabled=1")) {
-            specialToggles += "\n" + "r.Kuro.AFME.Enabled=1";
-        }
+        if (!specialToggles.includes("r.Kuro.AFME.Enabled=1")) specialToggles += "\n" + "r.Kuro.AFME.Enabled=1";
         updateOutput();
     });
 
     if (unlockUltraQualityBtn) unlockUltraQualityBtn.addEventListener("click", () => {
-        specialToggles = `
-r.PostProcessAAQuality=4
+        specialToggles = `r.PostProcessAAQuality=4
 r.imp.SSMbScaleLod0=0.00
 r.imp.SSMbScaleLod1=0.00
 r.MaterialQualityLevel=2
 r.KuroMaterialQualityLevel=2
-r.Mobile.HighQualityMaterial=1
-`.trim();
+r.Mobile.HighQualityMaterial=1`.trim();
         updateOutput();
     });
 
@@ -298,8 +254,7 @@ r.Mobile.HighQualityMaterial=1
     });
 
     if (addAllBtn) addAllBtn.addEventListener("click", () => {
-        specialToggles = `
-r.Mobile.DeviceEvaluation=3
+        specialToggles = `r.Mobile.DeviceEvaluation=3
 r.Android.DisableVulkanSM5Support=0
 r.Android.DisableVulkanSupport=0
 r.Android.DisableOpenGLES31Support=1
@@ -309,125 +264,46 @@ r.imp.SSMbScaleLod0=0.00
 r.imp.SSMbScaleLod1=0.00
 r.MaterialQualityLevel=2
 r.KuroMaterialQualityLevel=2
-r.Mobile.HighQualityMaterial=1
-`.trim();
+r.Mobile.HighQualityMaterial=1`.trim();
         updateOutput();
     });
 
-    // load stored value if present
     try {
         const stored = localStorage.getItem("specialTogglesConfig");
-        if (stored) {
-            specialToggles = stored;
-            updateOutput();
-        }
-    } catch (e) { /* ignore */ }
+        if (stored) { specialToggles = stored; updateOutput(); }
+    } catch (e) {}
 })();
 
 /***************************************************************************
- * ENGINE.INI GENERATOR (preserve your generation behavior)
+ * ENGINE.INI GENERATOR
  ***************************************************************************/
 (function () {
     const generateBtn = document.getElementById("generateBtn");
     if (!generateBtn) return;
-
     generateBtn.addEventListener("click", () => {
-        // Combine stored outputs; fallback to live values if not found
-        let textureConfig = "";
-        let shadowConfig = "";
-        let gcConfig = "";
-        let specialConfig = "";
-
+        let textureConfig = "", shadowConfig = "", gcConfig = "", specialConfig = "";
         try {
-            if (document.getElementById("includeTextureScaling")?.checked) {
+            if (document.getElementById("includeTextureScaling")?.checked)
                 textureConfig = localStorage.getItem("textureConfig") || document.getElementById("output")?.textContent || "";
-            }
-            if (document.getElementById("includeShadows")?.checked) {
+            if (document.getElementById("includeShadows")?.checked)
                 shadowConfig = localStorage.getItem("shadowConfig") || document.getElementById("shadowOutput")?.textContent || "";
-            }
-            if (document.getElementById("includeGarbageCollection")?.checked) {
+            if (document.getElementById("includeGarbageCollection")?.checked)
                 gcConfig = localStorage.getItem("gcConfig") || document.getElementById("gcOutput")?.textContent || "";
-            }
-            if (document.getElementById("includeSpecialToggles")?.checked) {
+            if (document.getElementById("includeSpecialToggles")?.checked)
                 specialConfig = localStorage.getItem("specialTogglesConfig") || document.getElementById("specialTogglesOutput")?.textContent || "";
-            }
-        } catch (e) { /* ignore */ }
+        } catch (e) {}
 
-        // Predefined header (preserve original header content style)
         const engineTemplate = `[Core.System]
 Paths=../../../Engine/Content
 Paths=%GAMEDIR%Content
 Paths=../../../Engine/Plugins/ThirdParty/ImpostorBaker/Content
 Paths=../../../Engine/Plugins/json2struct/Content
 Paths=../../../Engine/Plugins/Experimental/FieldSystemPlugin/Content
-Paths=../../../Client/Plugins/LGUI/LGUI/Content
-Paths=../../../Engine/Plugins/PrefabSystem/Content
-Paths=../../../Engine/Plugins/FX/Niagara/Content
-Paths=../../../Client/Plugins/Kuro/KuroGameplay/Content
-Paths=../../../Client/Plugins/Puerts/Puerts/Content
-Paths=../../../Client/Plugins/Wwise/Content
-Paths=../../../Engine/Plugins/Editor/GeometryMode/Content
-Paths=../../../Engine/Plugins/MovieScene/SequencerScripting/Content
-Paths=../../../Engine/Plugins/Experimental/PythonScriptPlugin/Content
-Paths=../../../Client/Plugins/CrashSight/Content
-Paths=../../../Engine/Plugins/ThirdParty/QuickEditor/Content
-Paths=../../../Client/Plugins/Kuro/TASdkPlugin/Content
-Paths=../../../Engine/Plugins/rdLODtools/Content
-Paths=../../../Client/Plugins/AudioMaterialPlugin/Content
-Paths=../../../Engine/Plugins/Runtime/Nvidia/DLSS/Content
-Paths=../../../Engine/Plugins/Runtime/HoudiniEngine/Content
-Paths=../../../Client/Plugins/Kuro/KuroHotPatch/Content
-Paths=../../../Client/Plugins/Kuro/KuroImposter/Content
-Paths=../../../Client/Plugins/Kuro/KuroAutomationTool/Content
-Paths=../../../Engine/Plugins/FX/HoudiniNiagara/Content
-Paths=../../../Client/Plugins/LogicDriverLite/Content
-Paths=../../../Engine/Plugins/Runtime/AudioSynesthesia/Content
-Paths=../../../Engine/Plugins/Experimental/ControlRig/Content
-Paths=../../../Engine/Plugins/Media/MediaCompositing/Content
-Paths=../../../Engine/Plugins/Runtime/Synthesis/Content
-Paths=../../../Engine/Plugins/SequenceDialogue/Content
-Paths=../../../Client/Plugins/Puerts/ReactUMG/Content
-Paths=../../../Client/Plugins/genesis-ue-plugin/RenderExporter/Content
-Paths=../../../Engine/Plugins/KuroiOSDelegate/Content
-Paths=../../../Client/Plugins/Kuro/KuroCloudGame/Content
-Paths=../../../Engine/Plugins/Developer/PixelDebug/Content
-Paths=../../../Engine/Plugins/PWPlugin/Content
-Paths=../../../Engine/Plugins/BlueprintFileUtils/Content
-Paths=../../../Client/Plugins/BlockoutToolsPlugin/Content
-Paths=../../../Client/Plugins/ComfyTextures/Content
-Paths=../../../Client/Plugins/KuroComputeShader/Content
-Paths=../../../Client/Plugins/KuroTDM/Content
-Paths=../../../Client/Plugins/Kuro/KuroGachaTools/Content
-Paths=../../../Client/Plugins/Kuro/KuroPSOTools/Content
-Paths=../../../Client/Plugins/Kuro/KuroPushSdk/Content
-Paths=../../../Client/Plugins/MagtModule/Content
-Paths=../../../Client/Plugins/SpinePlugin/Content
-Paths=../../../Client/Plugins/TpSafe/Content
-Paths=../../../Engine/Plugins/AFME/Content
-Paths=../../../Engine/Plugins/Animation/ACLPlugin/Content
-Paths=../../../Engine/Plugins/AssetChecker/Content
-Paths=../../../Engine/Plugins/DawnSDK/DawnSDK/Content
-Paths=../../../Engine/Plugins/Dawn/Content
-Paths=../../../Engine/Plugins/Editor/SpeedTreeImporter/Content
-Paths=../../../Engine/Plugins/Experimental/ChaosClothEditor/Content
-Paths=../../../Engine/Plugins/Experimental/ChaosNiagara/Content
-Paths=../../../Engine/Plugins/Experimental/ChaosSolverPlugin/Content
-Paths=../../../Engine/Plugins/GSR/Content
-Paths=../../../Engine/Plugins/Runtime/Intel/XeSS/Content
-Paths=../../../Engine/Plugins/Runtime/Nvidia/NRD/Content
-
-[/Script/Engine.RendererOverrideSettings]
-
-; Below are auto-generated settings from WuWa Config Generator
-`;
+; Below are auto-generated settings from WuWa Config Generator`;
 
         const finalConfig = `${engineTemplate}\n\n${specialConfig}\n\n${textureConfig}\n\n${shadowConfig}\n\n${gcConfig}\n\n; End of Auto-Generated Config`;
 
-        try {
-            localStorage.setItem("generatedConfig", finalConfig);
-        } catch (e) { /* ignore */ }
-
-        // preserve original navigation behavior
+        try { localStorage.setItem("generatedConfig", finalConfig); } catch (e) {}
         window.location.href = "generated-engine-ini.html";
     });
 })();
@@ -438,92 +314,45 @@ Paths=../../../Engine/Plugins/Runtime/Nvidia/NRD/Content
 (function () {
     const resetAllBtn = document.getElementById("resetBtn");
     if (!resetAllBtn) return;
-
     resetAllBtn.addEventListener("click", () => {
-        // Reset sliders (all inputs type=range)
         document.querySelectorAll("input[type='range']").forEach(s => {
-            if (s.defaultValue !== undefined) s.value = s.defaultValue;
-            else s.value = s.min || 0;
+            s.value = s.defaultValue ?? s.min ?? 0;
             s.dispatchEvent(new Event('input'));
         });
-
-        // Clear stored generated values
-        try {
-            localStorage.removeItem("textureConfig");
-            localStorage.removeItem("shadowConfig");
-            localStorage.removeItem("generatedConfig");
-            localStorage.removeItem("specialTogglesConfig");
-            localStorage.removeItem("gcConfig");
-        } catch (e) { /* ignore storage errors */ }
-
-        // Reset special in-game toggles variable and UI output
+        ["textureConfig","shadowConfig","generatedConfig","specialTogglesConfig","gcConfig"].forEach(k => localStorage.removeItem(k));
         specialToggles = "";
-        const specialTogglesOutput = document.getElementById("specialTogglesOutput");
-        if (specialTogglesOutput) specialTogglesOutput.textContent = "";
-
-        // Ensure checkboxes are unchecked on reset
-        document.querySelectorAll("#engineIniContents input[type='checkbox']").forEach(cb => {
-            cb.checked = false;
-        });
-
+        const o = document.getElementById("specialTogglesOutput");
+        if (o) o.textContent = "";
+        document.querySelectorAll("#engineIniContents input[type='checkbox']").forEach(cb => cb.checked = false);
         alert("All configs reset to default values.");
     });
 })();
 
 /***************************************************************************
- * NAVBAR LOADER, BACKGROUND VIDEO PAUSE/PLAY
+ * NAVBAR LOADER / BG VIDEO
  ***************************************************************************/
 (function () {
-    // Navbar load (non-blocking)
     if (document.getElementById("navbar")) {
         fetch("components/navbar.html")
-            .then(response => response.text())
-            .then(data => { document.getElementById("navbar").innerHTML = data; })
-            .catch(() => { /* ignore navbar load errors */ });
+            .then(r => r.text()).then(t => { document.getElementById("navbar").innerHTML = t; })
+            .catch(() => {});
     }
-
-    // background video pause/resume on visibility change
     const bgVideo = document.getElementById("bg-video");
-    if (bgVideo) {
-        document.addEventListener("visibilitychange", () => {
-            try {
-                if (document.hidden) bgVideo.pause();
-                else bgVideo.play();
-            } catch (e) {}
-        });
-    }
+    if (bgVideo) document.addEventListener("visibilitychange", () => {
+        try { document.hidden ? bgVideo.pause() : bgVideo.play(); } catch (e) {}
+    });
 })();
 
 /***************************************************************************
- * FLOATING PANEL / CHECKLIST
+ * FLOATING CHECKLIST
  ***************************************************************************/
-
-// Select All and Reset (fixed behavior: Select All = check, Reset = uncheck)
 (function () {
     const selectAllBtn = document.getElementById("selectAllBtn");
     const resetChecklistBtn = document.getElementById("resetChecklistBtn");
     const checkboxes = () => document.querySelectorAll("#engineIniContents input[type='checkbox']");
-
-    if (selectAllBtn) selectAllBtn.addEventListener("click", () => {
-        checkboxes().forEach(cb => cb.checked = true);
-    });
-
-    if (resetChecklistBtn) resetChecklistBtn.addEventListener("click", () => {
-        checkboxes().forEach(cb => cb.checked = false);
-    });
+    if (selectAllBtn) selectAllBtn.addEventListener("click", () => { checkboxes().forEach(cb => cb.checked = true); });
+    if (resetChecklistBtn) resetChecklistBtn.addEventListener("click", () => { checkboxes().forEach(cb => cb.checked = false); });
 })();
-
-function navigateToSection(sectionId) {
-    // close others then open target — exclusive behavior
-    document.querySelectorAll("details").forEach(d => {
-        if (d.id === sectionId) {
-            d.open = true;
-            d.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else {
-            d.open = false;
-        }
-    });
-}
 
 /***************************************************************************
  * DRAGGABLE PANEL
@@ -531,123 +360,14 @@ function navigateToSection(sectionId) {
 (function makeDraggable() {
     const el = document.getElementById("engineIniContents");
     if (!el) return;
-
-    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-
+    let pos1=0,pos2=0,pos3=0,pos4=0;
     el.addEventListener('mousedown', dragMouseDown);
     el.addEventListener('touchstart', dragTouchStart, { passive: false });
-
-    function dragMouseDown(e) {
-        e.preventDefault();
-        pos3 = e.clientX;
-        pos4 = e.clientY;
+    function dragMouseDown(e){e.preventDefault();pos3=e.clientX;pos4=e.clientY;
         document.addEventListener('mousemove', elementDrag);
-        document.addEventListener('mouseup', closeDrag);
-    }
-
-    function elementDrag(e) {
-        e.preventDefault();
-        pos1 = pos3 - e.clientX;
-        pos2 = pos4 - e.clientY;
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-        el.style.left = (el.offsetLeft - pos1) + "px";
-        el.style.top = (el.offsetTop - pos2) + "px";
-    }
-
-    function closeDrag() {
-        document.removeEventListener('mousemove', elementDrag);
-        document.removeEventListener('mouseup', closeDrag);
-    }
-
-    function dragTouchStart(e) {
-        e.preventDefault();
-        const touch = e.touches[0];
-        pos3 = touch.clientX;
-        pos4 = touch.clientY;
-        document.addEventListener('touchmove', touchDrag, { passive: false });
-        document.addEventListener('touchend', closeTouchDrag);
-    }
-
-    function touchDrag(e) {
-        e.preventDefault();
-        const touch = e.touches[0];
-        pos1 = pos3 - touch.clientX;
-        pos2 = pos4 - touch.clientY;
-        pos3 = touch.clientX;
-        pos4 = touch.clientY;
-        el.style.left = (el.offsetLeft - pos1) + "px";
-        el.style.top = (el.offsetTop - pos2) + "px";
-    }
-
-    function closeTouchDrag() {
-        document.removeEventListener('touchmove', touchDrag);
-        document.removeEventListener('touchend', closeTouchDrag);
-    }
-})();
-
-/***************************************************************************
- * COLLAPSE / EXPAND ALL and exclusive details behavior
- ***************************************************************************/
-
-// --- COLLAPSIBLE EXCLUSIVE OPEN BEHAVIOR ---
-document.querySelectorAll('details[data-category="main"]').forEach((details) => {
-    details.addEventListener('toggle', (event) => {
-        if (details.open) {
-            document.querySelectorAll('details[data-category="main"]').forEach((other) => {
-                if (other !== details) other.open = false;
-            });
-        }
-    });
-});
-
-// Prevent inner details (like Technical Footnotes) from closing parents
-document.querySelectorAll('details details').forEach((nested) => {
-    nested.addEventListener('toggle', (e) => {
-        e.stopPropagation();
-    });
-});
-
-// --- COLLAPSE / EXPAND ALL ---
-function collapseAll() {
-    document.querySelectorAll('details[data-category="main"]').forEach(d => d.open = false);
-}
-function expandAll() {
-    document.querySelectorAll('details[data-category="main"]').forEach(d => d.open = true);
-}
-
-// --- CHECKLIST BUTTONS ---
-const selectAllBtn = document.getElementById('selectAllBtn');
-const resetChecklistBtn = document.getElementById('resetChecklistBtn');
-if (selectAllBtn) {
-    selectAllBtn.addEventListener('click', () => {
-        document.querySelectorAll('#engineIniContents input[type="checkbox"]').forEach(cb => cb.checked = true);
-    });
-}
-if (resetChecklistBtn) {
-    resetChecklistBtn.addEventListener('click', () => {
-        document.querySelectorAll('#engineIniContents input[type="checkbox"]').forEach(cb => cb.checked = false);
-        localStorage.removeItem('engineIniChecklist');
-    });
-}
-
-// --- DRAGGABLE CHECKLIST WINDOW ---
-const draggable = document.querySelector('.draggable');
-if (draggable) {
-    let offsetX, offsetY, isDown = false;
-    draggable.addEventListener('mousedown', (e) => {
-        isDown = true;
-        offsetX = e.clientX - draggable.offsetLeft;
-        offsetY = e.clientY - draggable.offsetTop;
-        draggable.style.cursor = 'grabbing';
-    });
-    document.addEventListener('mouseup', () => {
-        isDown = false;
-        draggable.style.cursor = 'grab';
-    });
-    document.addEventListener('mousemove', (e) => {
-        if (!isDown) return;
-        draggable.style.left = `${e.clientX - offsetX}px`;
-        draggable.style.top = `${e.clientY - offsetY}px`;
-    });
-}
+        document.addEventListener('mouseup', closeDrag);}
+    function elementDrag(e){e.preventDefault();pos1=pos3-e.clientX;pos2=pos4-e.clientY;
+        pos3=e.clientX;pos4=e.clientY;el.style.left=(el.offsetLeft-pos1)+"px";el.style.top=(el.offsetTop-pos2)+"px";}
+    function closeDrag(){document.removeEventListener('mousemove',elementDrag);document.removeEventListener('mouseup',closeDrag);}
+    function dragTouchStart(e){e.preventDefault();const t=e.touches[0];pos3=t.clientX;pos4=t.clientY;
+        document.addEventListener('touchmove
