@@ -589,21 +589,65 @@ function navigateToSection(sectionId) {
 /***************************************************************************
  * COLLAPSE / EXPAND ALL and exclusive details behavior
  ***************************************************************************/
+
+// --- COLLAPSIBLE EXCLUSIVE OPEN BEHAVIOR ---
+document.querySelectorAll('details[data-category="main"]').forEach((details) => {
+    details.addEventListener('toggle', (event) => {
+        if (details.open) {
+            document.querySelectorAll('details[data-category="main"]').forEach((other) => {
+                if (other !== details) other.open = false;
+            });
+        }
+    });
+});
+
+// Prevent inner details (like Technical Footnotes) from closing parents
+document.querySelectorAll('details details').forEach((nested) => {
+    nested.addEventListener('toggle', (e) => {
+        e.stopPropagation();
+    });
+});
+
+// --- COLLAPSE / EXPAND ALL ---
 function collapseAll() {
-    document.querySelectorAll("details").forEach(d => d.open = false);
+    document.querySelectorAll('details[data-category="main"]').forEach(d => d.open = false);
 }
 function expandAll() {
-    document.querySelectorAll("details").forEach(d => d.open = true);
+    document.querySelectorAll('details[data-category="main"]').forEach(d => d.open = true);
 }
 
-// Make details exclusive: when one opens, close others
-(function makeDetailsExclusive() {
-    document.querySelectorAll("details").forEach(d => {
-        d.addEventListener('toggle', (e) => {
-            if (!d.open) return;
-            document.querySelectorAll("details").forEach(other => {
-                if (other !== d) other.open = false;
-            });
-        });
+// --- CHECKLIST BUTTONS ---
+const selectAllBtn = document.getElementById('selectAllBtn');
+const resetChecklistBtn = document.getElementById('resetChecklistBtn');
+if (selectAllBtn) {
+    selectAllBtn.addEventListener('click', () => {
+        document.querySelectorAll('#engineIniContents input[type="checkbox"]').forEach(cb => cb.checked = true);
     });
-})();
+}
+if (resetChecklistBtn) {
+    resetChecklistBtn.addEventListener('click', () => {
+        document.querySelectorAll('#engineIniContents input[type="checkbox"]').forEach(cb => cb.checked = false);
+        localStorage.removeItem('engineIniChecklist');
+    });
+}
+
+// --- DRAGGABLE CHECKLIST WINDOW ---
+const draggable = document.querySelector('.draggable');
+if (draggable) {
+    let offsetX, offsetY, isDown = false;
+    draggable.addEventListener('mousedown', (e) => {
+        isDown = true;
+        offsetX = e.clientX - draggable.offsetLeft;
+        offsetY = e.clientY - draggable.offsetTop;
+        draggable.style.cursor = 'grabbing';
+    });
+    document.addEventListener('mouseup', () => {
+        isDown = false;
+        draggable.style.cursor = 'grab';
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        draggable.style.left = `${e.clientX - offsetX}px`;
+        draggable.style.top = `${e.clientY - offsetY}px`;
+    });
+}
