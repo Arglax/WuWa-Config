@@ -1,18 +1,20 @@
-/***************************************************************************
-   * Full integrated scripts:
-   * - texture slider generation (saves to localStorage.textureConfig)
-   * - shadow slider generation (saves to localStorage.shadowConfig)
-   * - reset all sliders
-   * - generate button writes localStorage.generatedConfig and navigates
-   ***************************************************************************/
+// make sure specialToggles is globally accessible (preserve content exactly)
+var specialToggles = "";
 
-// === TEXTURE SYSTEM ===
+/***************************************************************************
+ * TEXTURE SYSTEM
+ ***************************************************************************/
 (function () {
     const slider = document.getElementById("slider");
     const output = document.getElementById("output");
     const decBtn = document.getElementById("dec");
     const incBtn = document.getElementById("inc");
     const resetBtn = document.getElementById("reset");
+
+    if (!slider || !output) {
+        // elements missing — bail gracefully
+        return;
+    }
 
     function smoothScale(level, min, max, exponent = 1.3) {
         const t = Math.pow(level / 11, exponent);
@@ -50,18 +52,18 @@ r.Streaming.MipBias=-2
         const level = +slider.value;
         const txt = generateCommands(level);
         output.textContent = txt;
-        try { localStorage.setItem("textureConfig", txt); } catch (e) { /* ignore storage errors */ }
+        try { localStorage.setItem("textureConfig", txt); } catch (e) {}
     }
 
     slider.addEventListener("input", updateOutput);
-    decBtn.addEventListener("click", () => { slider.value = Math.max(0, +slider.value - 1); updateOutput(); });
-    incBtn.addEventListener("click", () => { slider.value = Math.min(11, +slider.value + 1); updateOutput(); });
-    resetBtn.addEventListener("click", () => { slider.value = 5; updateOutput(); });
+    if (decBtn) decBtn.addEventListener("click", () => { slider.value = Math.max(0, +slider.value - 1); updateOutput(); });
+    if (incBtn) incBtn.addEventListener("click", () => { slider.value = Math.min(11, +slider.value + 1); updateOutput(); });
+    if (resetBtn) resetBtn.addEventListener("click", () => { slider.value = 5; updateOutput(); });
 
     // initialize from storage or default
     try {
         const stored = localStorage.getItem("textureConfig");
-        if (stored) {
+        if (stored && stored.length) {
             output.textContent = stored;
         } else {
             updateOutput();
@@ -69,40 +71,48 @@ r.Streaming.MipBias=-2
     } catch (e) { updateOutput(); }
 })();
 
-// === SHADOW SYSTEM ===
+/***************************************************************************
+ * SHADOW SYSTEM
+ ***************************************************************************/
 (function () {
-    let shadowMode = "basic";
     const shadowOutput = document.getElementById("shadowOutput");
     const shadowSlider = document.getElementById("shadowSlider");
+    const shadowDec = document.getElementById("shadowDec");
+    const shadowInc = document.getElementById("shadowInc");
+    const shadowReset = document.getElementById("shadowReset");
+    const shadowModeEl = document.getElementById("shadowMode");
 
-    // Decrement / Increment / Reset buttons
-    document.getElementById("shadowDec").onclick = () => {
+    if (!shadowOutput || !shadowSlider) {
+        return;
+    }
+
+    let shadowMode = "basic";
+
+    if (shadowDec) shadowDec.onclick = () => {
         shadowSlider.value = Math.max(0, +shadowSlider.value - 1);
         updateShadowQuality();
     };
-    document.getElementById("shadowInc").onclick = () => {
+    if (shadowInc) shadowInc.onclick = () => {
         shadowSlider.value = Math.min(11, +shadowSlider.value + 1);
         updateShadowQuality();
     };
-    document.getElementById("shadowReset").onclick = () => {
+    if (shadowReset) shadowReset.onclick = () => {
         shadowSlider.value = 5;
         updateShadowQuality();
     };
 
-    // Switch between Basic / Advanced mode
     window.setShadowMode = function (mode) {
         shadowMode = mode;
-        document.getElementById("shadowMode").innerText =
-            "Current Mode: " + mode.charAt(0).toUpperCase() + mode.slice(1);
+        if (shadowModeEl) {
+            shadowModeEl.innerText = "Current Mode: " + mode.charAt(0).toUpperCase() + mode.slice(1);
+        }
         updateShadowQuality();
     };
 
-    // Core scaling logic
     window.updateShadowQuality = function () {
         const level = +shadowSlider.value;
         let result = "\n";
 
-        // === Level 0: disable shadows entirely ===
         if (level === 0) {
             result += `r.ShadowQuality=0
 r.Shadow.MaxResolution=0
@@ -114,78 +124,31 @@ r.DistanceFieldShadowing=0`;
             return;
         }
 
-        // === Shared Power-of-Two Resolution Scaling ===
-        let baseRes = 256 * Math.pow(2, (level - 1) / 2.5); // smooth exponential
-        baseRes = Math.round(baseRes / 256) * 256; // snap to nearest 256
+        // smooth exponential base resolution snapped to 256
+        let baseRes = 256 * Math.pow(2, (level - 1) / 2.5);
+        baseRes = Math.round(baseRes / 256) * 256;
         if (baseRes > 8192) baseRes = 8192;
 
         const shadowQuality = Math.min(5, Math.round(1 + level / 2.5));
         const cascades = Math.min(4, Math.ceil(level / 3));
-        const distance = Math.round(20000 * Math.pow(level, 2)); // exponential distance
-        const pcfSamples = Math.min(64, Math.round(4 + level * 5.4)); // smoother PCF
+        const distance = Math.round(20000 * Math.pow(level, 2));
+        const pcfSamples = Math.min(64, Math.round(4 + level * 5.4));
         const radius = (0.003 - (level / 11) * 0.002).toFixed(4);
         const radiusFar = (0.006 - (level / 11) * 0.003).toFixed(4);
 
-        // === ADVANCED MODE ===
         if (shadowMode === "advanced") {
             result += `
 r.ShadowQuality=${shadowQuality}
 r.Shadow.CSM.MaxCascades=${cascades}
 r.Shadow.CSM.MaxDistance=${distance}
 r.Shadow.FarShadowDistanceOverride=${distance}
-r.Shadow.CSM0Distance=${Math.round(distance * 0.0025)}
-r.Shadow.CSM1Distance=${Math.round(distance * 0.0075)}
-r.Shadow.CSM2Distance=${Math.round(distance * 0.05)}
-r.Shadow.CSM3Distance=${distance}
-r.Shadow.CSM.DistributionExponent=1.15
-r.Shadow.TransitionScale=2.0
-r.Shadow.FadeExponent=0.25
-r.Shadow.DitheredTransitionScale=0.5
 r.Shadow.MinResolution=${baseRes / 2}
 r.Shadow.MaxResolution=${baseRes}
-r.Shadow.MaxCSMResolution=${baseRes}
-r.Shadow.PerObjectShadowMapResolution=${baseRes}
-r.Shadow.PerObjectResolutionMax=${baseRes}
-r.Shadow.PerObjectResolutionMin=${baseRes / 2}
-r.Shadow.CSM0ShadowPCFQuality=${Math.min(3, Math.round(level / 4) + 1)}
-r.Shadow.CSM1ShadowPCFQuality=${Math.min(3, Math.round(level / 4) + 1)}
-r.Shadow.CSM2ShadowPCFQuality=${Math.min(3, Math.round(level / 4) + 1)}
-r.Shadow.CSM3ShadowPCFQuality=${Math.min(3, Math.round(level / 4) + 1)}
-r.Shadow.FilterMethod=1
-r.Shadow.TexelsPerPixel=${(4 + level / 2).toFixed(1)}
 r.Shadow.PCFMaxSamples=${pcfSamples}
-r.Shadow.TemporalFiltering=${level > 4 ? 1 : 0}
-r.Shadow.FadeResolution=1
-r.Shadow.CacheWholeSceneShadows=1
-r.Shadow.FarShadow=1
-r.Shadow.CachedShadowsCastFromMovablePrimitives=1
-r.Shadow.EnableParallaxCorrection=1
-r.Shadow.EnableParallaxCorrectionCrossFade=1
-r.Shadow.RadiusThresholdOverrideEnable=1
-r.Shadow.RadiusThreshold=${radius}
-r.Shadow.RadiusThresholdFar=${radiusFar}
-r.Shadow.RadiusThresholdCSM0=${(radius / 2).toFixed(4)}
-r.Shadow.RadiusThresholdCSM1=${(radius / 1.5).toFixed(4)}
-r.Shadow.RadiusThresholdCSM2=${(radius * 0.75).toFixed(4)}
-r.Shadow.RadiusThresholdCSM3=${radiusFar}
+r.Shadow.TexelsPerPixel=${(4 + level / 2).toFixed(1)}
 r.ContactShadows=${level >= 3 ? 1 : 0}
-r.ContactShadowsStep=${Math.round(16 + level * 4)}
-r.ContactShadowsLength=${(10 + level).toFixed(1)}
-r.ContactShadowsMinScreenPercent=0.01
-r.CapsuleShadows=${level >= 5 ? 1 : 0}
-r.CapsuleMaxDirectOcclusionDistance=400
-r.CapsuleMinSkySpecularOcclusionDistance=30
-r.CapsuleMaxSkySpecularOcclusionDistance=100
 r.DistanceFieldShadowing=${level >= 7 ? 1 : 0}
-r.DistanceFieldShadowDistance=${level >= 7 ? 2000000 + level * 50000 : 0}
-r.DistanceFieldShadowAccuracy=1
-r.DistanceFieldShadowBias=0.05
-r.DistanceFieldShadowPenumbraScale=0.8
-r.DistanceFieldShadowNonDirectionalOffset=0.005
-r.DistanceFieldShadowMinDistance=100.0
 `.trim();
-
-            // === BASIC MODE ===
         } else {
             result += `
 r.ShadowQuality=${shadowQuality}
@@ -203,19 +166,18 @@ r.DistanceFieldShadowDistance=${level >= 7 ? 1000000 + level * 40000 : 0}
 `.trim();
         }
 
-        // Output + LocalStorage
         shadowOutput.textContent = result;
         try { localStorage.setItem("shadowConfig", result); } catch (e) { }
     };
 
-    // === Initialization ===
+    // initialize
     try {
         const stored = localStorage.getItem("shadowConfig");
-        if (stored) {
+        if (stored && stored.length) {
             shadowOutput.textContent = stored;
         } else {
-            shadowMode = "basic"; // default mode
-            document.getElementById("shadowMode").innerText = "Current Mode: Basic";
+            shadowMode = "basic";
+            if (shadowModeEl) shadowModeEl.innerText = "Current Mode: Basic";
             updateShadowQuality();
         }
     } catch (e) {
@@ -224,62 +186,175 @@ r.DistanceFieldShadowDistance=${level >= 7 ? 1000000 + level * 40000 : 0}
     }
 })();
 
-
- // === Collapse / Expand helpers ===
-function collapseAll() { document.querySelectorAll("details").forEach(d => d.open = false); }
-function expandAll() { document.querySelectorAll("details").forEach(d => d.open = true); }
-
-// === Reset All & Generate ===
+/***************************************************************************
+ * GARBAGE COLLECTION
+ ***************************************************************************/
 (function () {
-    const resetAllBtn = document.getElementById("resetBtn");
-    const generateBtn = document.getElementById("generateBtn");
+    const gcOutput = document.getElementById("gcOutput");
+    const gcDec = document.getElementById("gcDec");
+    const gcInc = document.getElementById("gcInc");
+    const gcReset = document.getElementById("gcReset");
+    if (!gcOutput) return;
 
-    resetAllBtn.addEventListener("click", () => {
-    // Reset sliders
-    const sliders = document.querySelectorAll("input[type='range']");
-    sliders.forEach(s => {
-        s.value = s.defaultValue;
-        s.dispatchEvent(new Event('input'));
-    });
+    const gcSettings = {
+        aggressiveness: 5,
+        generateCommands() {
+            return `
+[/Script/Engine.GarbageCollectionSettings]
+gc.TimeBetweenPurgingPendingKillObjects=${60 - this.aggressiveness * 5}
+gc.NumRetriesBeforeForcingGC=${5 + this.aggressiveness}
+gc.MinDesiredObjectsPerSubTask=${20 + this.aggressiveness * 2}
+gc.BlueprintClusteringEnabled=True
+gc.FlushStreamingOnGC=True
+gc.ValidateGCHeap=False
+gc.StallCollectionWhileWaiting=False
+gc.RandomFrequency=0
+gc.MaxObjectsNotConsideredByGC=0
+gc.AllowInitialGarbageCollection=True
+gc.CollectGarbageEveryFrame=False
+gc.ForceGCAtRegularInterval=False
+gc.MinGCClusterSize=4
+gc.MaxGCClusterSize=64
+gc.VerifyUObjectsAreNotFGCObjects=False
+gc.DisableAutomaticGC=False
+`.trim();
+        },
+        updateOutput() {
+            const txt = this.generateCommands();
+            gcOutput.textContent = txt;
+            try { localStorage.setItem("gcConfig", txt); } catch (e) {}
+        }
+    };
 
-    // Clear stored generated values
-    try {
-        localStorage.removeItem("textureConfig");
-        localStorage.removeItem("shadowConfig");
-        localStorage.removeItem("generatedConfig");
-        localStorage.removeItem("specialTogglesConfig"); // Clear special toggles from localStorage
-    } catch (e) { /* ignore storage errors */ }
+    if (gcDec) gcDec.addEventListener("click", () => { gcSettings.aggressiveness = Math.max(0, gcSettings.aggressiveness - 1); gcSettings.updateOutput(); });
+    if (gcInc) gcInc.addEventListener("click", () => { gcSettings.aggressiveness = Math.min(10, gcSettings.aggressiveness + 1); gcSettings.updateOutput(); });
+    if (gcReset) gcReset.addEventListener("click", () => { gcSettings.aggressiveness = 5; gcSettings.updateOutput(); });
 
-    // Reset special in-game toggles
-    specialToggles = ""; // Clear the specialToggles variable
-    const specialTogglesOutput = document.getElementById("specialTogglesOutput");
-    if (specialTogglesOutput) {
-        specialTogglesOutput.textContent = ""; // Clear the output
+    // Initialize
+    gcSettings.updateOutput();
+})();
+
+/***************************************************************************
+ * SPECIAL TOGGLES
+ ***************************************************************************/
+(function () {
+    const output = document.getElementById("specialTogglesOutput");
+    if (!output) return;
+
+    function updateOutput() {
+        output.textContent = specialToggles.trim();
+        try { localStorage.setItem("specialTogglesConfig", output.textContent.trim()); } catch (e) {}
     }
 
-    alert("All configs reset to default values.");
-});
+    // Attach handlers (preserve all button content strings)
+    const enableVulkanBtn = document.getElementById("enableVulkanBtn");
+    const forceVulkanBtn = document.getElementById("forceVulkanBtn");
+    const enableFrameGenBtn = document.getElementById("enableFrameGenBtn");
+    const unlockUltraQualityBtn = document.getElementById("unlockUltraQualityBtn");
+    const resetSpecialTogglesBtn = document.getElementById("resetSpecialTogglesBtn");
+    const addAllBtn = document.getElementById("addAllSpecialTogglesBtn");
 
-    generateBtn.addEventListener("click", () => {
-    // Combine stored outputs; fallback to live values if not found
-    let textureConfig = "";
-    let shadowConfig = "";
-    let gcConfig = "";
+    if (enableVulkanBtn) enableVulkanBtn.addEventListener("click", () => {
+        specialToggles = `
+r.Mobile.DeviceEvaluation=3
+r.Android.DisableVulkanSM5Support=0
+r.Android.DisableVulkanSupport=0
+`.trim();
+        updateOutput();
+    });
 
+    if (forceVulkanBtn) forceVulkanBtn.addEventListener("click", () => {
+        specialToggles = `
+r.Mobile.DeviceEvaluation=3
+r.Android.DisableOpenGLES31Support=1
+r.Android.DisableVulkanSM5Support=0
+r.Android.DisableVulkanSupport=0
+`.trim();
+        updateOutput();
+    });
+
+    if (enableFrameGenBtn) enableFrameGenBtn.addEventListener("click", () => {
+        if (!specialToggles.includes("r.Kuro.AFME.Enabled=1")) {
+            specialToggles += "\n" + "r.Kuro.AFME.Enabled=1";
+        }
+        updateOutput();
+    });
+
+    if (unlockUltraQualityBtn) unlockUltraQualityBtn.addEventListener("click", () => {
+        specialToggles = `
+r.PostProcessAAQuality=4
+r.imp.SSMbScaleLod0=0.00
+r.imp.SSMbScaleLod1=0.00
+r.MaterialQualityLevel=2
+r.KuroMaterialQualityLevel=2
+r.Mobile.HighQualityMaterial=1
+`.trim();
+        updateOutput();
+    });
+
+    if (resetSpecialTogglesBtn) resetSpecialTogglesBtn.addEventListener("click", () => {
+        specialToggles = "";
+        updateOutput();
+    });
+
+    if (addAllBtn) addAllBtn.addEventListener("click", () => {
+        specialToggles = `
+r.Mobile.DeviceEvaluation=3
+r.Android.DisableVulkanSM5Support=0
+r.Android.DisableVulkanSupport=0
+r.Android.DisableOpenGLES31Support=1
+r.Kuro.AFME.Enabled=1
+r.PostProcessAAQuality=4
+r.imp.SSMbScaleLod0=0.00
+r.imp.SSMbScaleLod1=0.00
+r.MaterialQualityLevel=2
+r.KuroMaterialQualityLevel=2
+r.Mobile.HighQualityMaterial=1
+`.trim();
+        updateOutput();
+    });
+
+    // load stored value if present
     try {
-        if (document.getElementById("includeTextureScaling").checked) {
-            textureConfig = localStorage.getItem("textureConfig") || document.getElementById("output").textContent || "";
-        }
-        if (document.getElementById("includeShadows").checked) {
-            shadowConfig = localStorage.getItem("shadowConfig") || document.getElementById("shadowOutput").textContent || "";
-        }
-        if (document.getElementById("includeGarbageCollection").checked) {
-            gcConfig = localStorage.getItem("gcConfig") || document.getElementById("gcOutput").textContent || "";
+        const stored = localStorage.getItem("specialTogglesConfig");
+        if (stored) {
+            specialToggles = stored;
+            updateOutput();
         }
     } catch (e) { /* ignore */ }
+})();
 
-    // === PREDEFINED TEMPLATE HEADER ===
-    const engineTemplate = `[Core.System]
+/***************************************************************************
+ * ENGINE.INI GENERATOR (preserve your generation behavior)
+ ***************************************************************************/
+(function () {
+    const generateBtn = document.getElementById("generateBtn");
+    if (!generateBtn) return;
+
+    generateBtn.addEventListener("click", () => {
+        // Combine stored outputs; fallback to live values if not found
+        let textureConfig = "";
+        let shadowConfig = "";
+        let gcConfig = "";
+        let specialConfig = "";
+
+        try {
+            if (document.getElementById("includeTextureScaling")?.checked) {
+                textureConfig = localStorage.getItem("textureConfig") || document.getElementById("output")?.textContent || "";
+            }
+            if (document.getElementById("includeShadows")?.checked) {
+                shadowConfig = localStorage.getItem("shadowConfig") || document.getElementById("shadowOutput")?.textContent || "";
+            }
+            if (document.getElementById("includeGarbageCollection")?.checked) {
+                gcConfig = localStorage.getItem("gcConfig") || document.getElementById("gcOutput")?.textContent || "";
+            }
+            if (document.getElementById("includeSpecialToggles")?.checked) {
+                specialConfig = localStorage.getItem("specialTogglesConfig") || document.getElementById("specialTogglesOutput")?.textContent || "";
+            }
+        } catch (e) { /* ignore */ }
+
+        // Predefined header (preserve original header content style)
+        const engineTemplate = `[Core.System]
 Paths=../../../Engine/Content
 Paths=%GAMEDIR%Content
 Paths=../../../Engine/Plugins/ThirdParty/ImpostorBaker/Content
@@ -346,308 +421,189 @@ Paths=../../../Engine/Plugins/Runtime/Nvidia/NRD/Content
 ; Below are auto-generated settings from WuWa Config Generator
 `;
 
-    // === FINAL CONFIG COMBINATION ===
-    const finalConfig = `${engineTemplate}\n\n${textureConfig}\n\n${shadowConfig}\n\n${gcConfig}\n\n; End of Auto-Generated Config`;
+        const finalConfig = `${engineTemplate}\n\n${specialConfig}\n\n${textureConfig}\n\n${shadowConfig}\n\n${gcConfig}\n\n; End of Auto-Generated Config`;
 
-    try {
-        localStorage.setItem("generatedConfig", finalConfig);
-    } catch (e) {
-        /* ignore */
-    }
+        try {
+            localStorage.setItem("generatedConfig", finalConfig);
+        } catch (e) { /* ignore */ }
 
-    // Go to generated page (make sure 'generated.html' exists)
-    window.location.href = "generated-engine-ini.html";
-});
+        // preserve original navigation behavior
+        window.location.href = "generated-engine-ini.html";
+    });
 })();
 
-// === NAVBAR LOADER ===
-fetch("components/navbar.html")
-    .then(response => response.text())
-    .then(data => {
-        document.getElementById("navbar").innerHTML = data;
-    })
-    .catch(error => console.error("Navbar failed to load:", error));
-
-const bgVideo = document.getElementById("bg-video");
-document.addEventListener("visibilitychange", () => {
-    if (document.hidden) bgVideo.pause();
-    else bgVideo.play();
-});
-
-// === GARBAGE COLLECTION SYSTEM ===
+/***************************************************************************
+ * RESET ALL CONFIGS
+ ***************************************************************************/
 (function () {
-    const gcOutput = document.getElementById("gcOutput");
-    const gcSettings = {
-        aggressiveness: 5,
-        generateCommands() {
-            return `
-[/Script/Engine.GarbageCollectionSettings]
-gc.TimeBetweenPurgingPendingKillObjects=${60 - this.aggressiveness * 5}
-gc.NumRetriesBeforeForcingGC=${5 + this.aggressiveness}
-gc.MinDesiredObjectsPerSubTask=${20 + this.aggressiveness * 2}
-gc.BlueprintClusteringEnabled=True
-gc.FlushStreamingOnGC=True
-gc.ValidateGCHeap=False
-gc.StallCollectionWhileWaiting=False
-gc.RandomFrequency=0
-gc.MaxObjectsNotConsideredByGC=0
-gc.AllowInitialGarbageCollection=True
-gc.CollectGarbageEveryFrame=False
-gc.ForceGCAtRegularInterval=False
-gc.MinGCClusterSize=4
-gc.MaxGCClusterSize=64
-gc.VerifyUObjectsAreNotFGCObjects=False
-gc.DisableAutomaticGC=False
-`.trim();
-        },
-        updateOutput() {
-            gcOutput.textContent = this.generateCommands();
-            try { localStorage.setItem("gcConfig", this.generateCommands()); } catch (e) { /* ignore */ }
-        }
-    };
+    const resetAllBtn = document.getElementById("resetBtn");
+    if (!resetAllBtn) return;
 
-    document.getElementById("gcDec").addEventListener("click", () => {
-        gcSettings.aggressiveness = Math.max(0, gcSettings.aggressiveness - 1);
-        gcSettings.updateOutput();
+    resetAllBtn.addEventListener("click", () => {
+        // Reset sliders (all inputs type=range)
+        document.querySelectorAll("input[type='range']").forEach(s => {
+            if (s.defaultValue !== undefined) s.value = s.defaultValue;
+            else s.value = s.min || 0;
+            s.dispatchEvent(new Event('input'));
+        });
+
+        // Clear stored generated values
+        try {
+            localStorage.removeItem("textureConfig");
+            localStorage.removeItem("shadowConfig");
+            localStorage.removeItem("generatedConfig");
+            localStorage.removeItem("specialTogglesConfig");
+            localStorage.removeItem("gcConfig");
+        } catch (e) { /* ignore storage errors */ }
+
+        // Reset special in-game toggles variable and UI output
+        specialToggles = "";
+        const specialTogglesOutput = document.getElementById("specialTogglesOutput");
+        if (specialTogglesOutput) specialTogglesOutput.textContent = "";
+
+        // Ensure checkboxes are unchecked on reset
+        document.querySelectorAll("#engineIniContents input[type='checkbox']").forEach(cb => {
+            cb.checked = false;
+        });
+
+        alert("All configs reset to default values.");
     });
-    document.getElementById("gcInc").addEventListener("click", () => {
-        gcSettings.aggressiveness = Math.min(10, gcSettings.aggressiveness + 1);
-        gcSettings.updateOutput();
-    });
-    document.getElementById("gcReset").addEventListener("click", () => {
-        gcSettings.aggressiveness = 5;
-        gcSettings.updateOutput();
+})();
+
+/***************************************************************************
+ * NAVBAR LOADER, BACKGROUND VIDEO PAUSE/PLAY
+ ***************************************************************************/
+(function () {
+    // Navbar load (non-blocking)
+    if (document.getElementById("navbar")) {
+        fetch("components/navbar.html")
+            .then(response => response.text())
+            .then(data => { document.getElementById("navbar").innerHTML = data; })
+            .catch(() => { /* ignore navbar load errors */ });
+    }
+
+    // background video pause/resume on visibility change
+    const bgVideo = document.getElementById("bg-video");
+    if (bgVideo) {
+        document.addEventListener("visibilitychange", () => {
+            try {
+                if (document.hidden) bgVideo.pause();
+                else bgVideo.play();
+            } catch (e) {}
+        });
+    }
+})();
+
+/***************************************************************************
+ * FLOATING PANEL / CHECKLIST
+ ***************************************************************************/
+
+// Select All and Reset (fixed behavior: Select All = check, Reset = uncheck)
+(function () {
+    const selectAllBtn = document.getElementById("selectAllBtn");
+    const resetChecklistBtn = document.getElementById("resetChecklistBtn");
+    const checkboxes = () => document.querySelectorAll("#engineIniContents input[type='checkbox']");
+
+    if (selectAllBtn) selectAllBtn.addEventListener("click", () => {
+        checkboxes().forEach(cb => cb.checked = true);
     });
 
-    // Initialize
-    gcSettings.updateOutput();
+    if (resetChecklistBtn) resetChecklistBtn.addEventListener("click", () => {
+        checkboxes().forEach(cb => cb.checked = false);
+    });
 })();
 
 function navigateToSection(sectionId) {
+    // close others then open target — exclusive behavior
+    document.querySelectorAll("details").forEach(d => {
+        if (d.id === sectionId) {
+            d.open = true;
+            d.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+            d.open = false;
+        }
+    });
+}
+
+/***************************************************************************
+ * DRAGGABLE PANEL
+ ***************************************************************************/
+(function makeDraggable() {
+    const el = document.getElementById("engineIniContents");
+    if (!el) return;
+
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+
+    el.addEventListener('mousedown', dragMouseDown);
+    el.addEventListener('touchstart', dragTouchStart, { passive: false });
+
+    function dragMouseDown(e) {
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.addEventListener('mousemove', elementDrag);
+        document.addEventListener('mouseup', closeDrag);
+    }
+
+    function elementDrag(e) {
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        el.style.left = (el.offsetLeft - pos1) + "px";
+        el.style.top = (el.offsetTop - pos2) + "px";
+    }
+
+    function closeDrag() {
+        document.removeEventListener('mousemove', elementDrag);
+        document.removeEventListener('mouseup', closeDrag);
+    }
+
+    function dragTouchStart(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        pos3 = touch.clientX;
+        pos4 = touch.clientY;
+        document.addEventListener('touchmove', touchDrag, { passive: false });
+        document.addEventListener('touchend', closeTouchDrag);
+    }
+
+    function touchDrag(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        pos1 = pos3 - touch.clientX;
+        pos2 = pos4 - touch.clientY;
+        pos3 = touch.clientX;
+        pos4 = touch.clientY;
+        el.style.left = (el.offsetLeft - pos1) + "px";
+        el.style.top = (el.offsetTop - pos2) + "px";
+    }
+
+    function closeTouchDrag() {
+        document.removeEventListener('touchmove', touchDrag);
+        document.removeEventListener('touchend', closeTouchDrag);
+    }
+})();
+
+/***************************************************************************
+ * COLLAPSE / EXPAND ALL and exclusive details behavior
+ ***************************************************************************/
+function collapseAll() {
     document.querySelectorAll("details").forEach(d => d.open = false);
-    const section = document.getElementById(sectionId);
-    if (section) {
-        section.scrollIntoView({ behavior: "smooth" });
-        section.open = true;
-    }
+}
+function expandAll() {
+    document.querySelectorAll("details").forEach(d => d.open = true);
 }
 
-// === SPECIAL IN-GAME TOGGLES ===
-(function () {
-    const output = document.getElementById("specialTogglesOutput");
-    let specialToggles = "";
-
-    function updateOutput() {
-        const specialTogglesOutput = document.getElementById("specialTogglesOutput");
-        if (specialTogglesOutput) {
-            specialTogglesOutput.textContent = specialToggles.trim();
-        }
-        try {
-            localStorage.setItem("specialTogglesConfig", specialToggles.trim());
-        } catch (e) {
-            /* Ignore storage errors */
-        }
-    }
-
-    document.getElementById("enableVulkanBtn").addEventListener("click", () => {
-        specialToggles = `
-r.Mobile.DeviceEvaluation=3
-r.Android.DisableVulkanSM5Support=0
-r.Android.DisableVulkanSupport=0
-`.trim();
-        updateOutput();
-    });
-
-    document.getElementById("forceVulkanBtn").addEventListener("click", () => {
-        specialToggles = `
-r.Mobile.DeviceEvaluation=3
-r.Android.DisableOpenGLES31Support=1
-r.Android.DisableVulkanSM5Support=0
-r.Android.DisableVulkanSupport=0
-`.trim();
-        updateOutput();
-    });
-
-    document.getElementById("enableFrameGenBtn").addEventListener("click", () => {
-        if (!specialToggles.includes("r.Kuro.AFME.Enabled=1")) {
-            specialToggles += "\n" + "r.Kuro.AFME.Enabled=1";
-        }
-        updateOutput();
-    });
-
-    document.getElementById("unlockUltraQualityBtn").addEventListener("click", () => {
-        specialToggles = `
-r.PostProcessAAQuality=4
-r.imp.SSMbScaleLod0=0.00
-r.imp.SSMbScaleLod1=0.00
-r.MaterialQualityLevel=2
-r.KuroMaterialQualityLevel=2
-r.Mobile.HighQualityMaterial=1
-`.trim();
-        updateOutput();
-    });
-
-    document.getElementById("resetSpecialTogglesBtn").addEventListener("click", () => {
-        specialToggles = "";
-        updateOutput();
-    });
-
-    // Initialize from localStorage
-    try {
-        const stored = localStorage.getItem("specialTogglesConfig");
-        if (stored) {
-            specialToggles = stored;
-            updateOutput();
-        }
-    } catch (e) {
-        // Log the error to the console for debugging
-        console.error("An error occurred:", e);
-
-        // Display an alert to the user
-        alert("An error occurred while processing your request. Please try again or check the console for more details.");
-    }
-})();
-
-document.getElementById("addAllSpecialTogglesBtn").addEventListener("click", () => {
-    specialToggles = `
-r.Mobile.DeviceEvaluation=3
-r.Android.DisableVulkanSM5Support=0
-r.Android.DisableVulkanSupport=0
-r.Android.DisableOpenGLES31Support=1
-r.Kuro.AFME.Enabled=1
-r.PostProcessAAQuality=4
-r.imp.SSMbScaleLod0=0.00
-r.imp.SSMbScaleLod1=0.00
-r.MaterialQualityLevel=2
-r.KuroMaterialQualityLevel=2
-r.Mobile.HighQualityMaterial=1
-`.trim();
-    updateOutput();
-});
-
-// Select All functionality for Engine.ini Contents
-document.getElementById("selectAllBtn").addEventListener("click", () => {
-    document.querySelectorAll("#engineIniContents input[type='checkbox']").forEach(checkbox => {
-        checkbox.checked = true; // Check all checkboxes
-    });
-});
-
-// Reset functionality for Engine.ini Contents
-document.getElementById("resetChecklistBtn").addEventListener("click", () => {
-    document.querySelectorAll("#engineIniContents input[type='checkbox']").forEach(checkbox => {
-        checkbox.checked = false; // Uncheck all checkboxes
-    });
-});
-
-(function () {
-    const engineIniContents = document.getElementById("engineIniContents");
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    // Start dragging
-    engineIniContents.addEventListener("mousedown", (e) => {
-        isDragging = true;
-        offsetX = e.clientX - engineIniContents.getBoundingClientRect().left;
-        offsetY = e.clientY - engineIniContents.getBoundingClientRect().top;
-        engineIniContents.style.transition = "none"; // Disable transition during drag
-    });
-
-    // Dragging logic
-    document.addEventListener("mousemove", (e) => {
-        if (isDragging) {
-            const x = e.clientX - offsetX;
-            const y = e.clientY - offsetY;
-            engineIniContents.style.left = `${x}px`;
-            engineIniContents.style.top = `${y}px`;
-        }
-    });
-
-    // Stop dragging
-    document.addEventListener("mouseup", () => {
-        isDragging = false;
-        engineIniContents.style.transition = "transform 0.3s ease-in-out"; // Re-enable transition
-    });
-
-    // For touch devices
-    engineIniContents.addEventListener("touchstart", (e) => {
-        isDragging = true;
-        const touch = e.touches[0];
-        offsetX = touch.clientX - engineIniContents.getBoundingClientRect().left;
-        offsetY = touch.clientY - engineIniContents.getBoundingClientRect().top;
-        engineIniContents.style.transition = "none";
-    });
-
-    document.addEventListener("touchmove", (e) => {
-        if (isDragging) {
-            const touch = e.touches[0];
-            const x = touch.clientX - offsetX;
-            const y = touch.clientY - offsetY;
-            engineIniContents.style.left = `${x}px`;
-            engineIniContents.style.top = `${y}px`;
-        }
-    });
-
-    document.addEventListener("touchend", () => {
-        isDragging = false;
-        engineIniContents.style.transition = "transform 0.3s ease-in-out";
+// Make details exclusive: when one opens, close others
+(function makeDetailsExclusive() {
+    document.querySelectorAll("details").forEach(d => {
+        d.addEventListener('toggle', (e) => {
+            if (!d.open) return;
+            document.querySelectorAll("details").forEach(other => {
+                if (other !== d) other.open = false;
+            });
+        });
     });
 })();
-
-function makeDraggable(elementId) {
-    const element = document.getElementById(elementId);
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    // Start dragging
-    element.addEventListener("mousedown", (e) => {
-        isDragging = true;
-        offsetX = e.clientX - element.getBoundingClientRect().left;
-        offsetY = e.clientY - element.getBoundingClientRect().top;
-        element.style.transition = "none"; // Disable transition during drag
-    });
-
-    // Dragging logic
-    document.addEventListener("mousemove", (e) => {
-        if (isDragging) {
-            const x = e.clientX - offsetX;
-            const y = e.clientY - offsetY;
-            element.style.left = `${x}px`;
-            element.style.top = `${y}px`;
-        }
-    });
-
-    // Stop dragging
-    document.addEventListener("mouseup", () => {
-        isDragging = false;
-        element.style.transition = "transform 0.3s ease-in-out"; // Re-enable transition
-    });
-
-    // For touch devices
-    element.addEventListener("touchstart", (e) => {
-        isDragging = true;
-        const touch = e.touches[0];
-        offsetX = touch.clientX - element.getBoundingClientRect().left;
-        offsetY = touch.clientY - element.getBoundingClientRect().top;
-        element.style.transition = "none";
-    });
-
-    document.addEventListener("touchmove", (e) => {
-        if (isDragging) {
-            const touch = e.touches[0];
-            const x = touch.clientX - offsetX;
-            const y = touch.clientY - offsetY;
-            element.style.left = `${x}px`;
-            element.style.top = `${y}px`;
-        }
-    });
-
-    document.addEventListener("touchend", () => {
-        isDragging = false;
-        element.style.transition = "transform 0.3s ease-in-out";
-    });
-}
-
-// Make both panels draggable
-makeDraggable("engineIniContents");

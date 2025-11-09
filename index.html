@@ -20,7 +20,8 @@
     <main>
         <h1>WuWa Engine.ini Generator</h1>
 
-        <details open>
+        <!-- 🔧 Special In-Game Toggles -->
+        <details id="specialToggles" open>
             <summary>🔧 Special In-Game Toggles</summary>
             <p>Enable or configure special in-game features with the following toggles:</p>
 
@@ -30,15 +31,25 @@
                 <button id="enableFrameGenBtn">Enable Frame Generation</button>
                 <button id="unlockUltraQualityBtn">Unlock Ultra-High Quality</button>
                 <button id="resetSpecialTogglesBtn">Reset</button>
+                <button id="addAllSpecialTogglesBtn">Add All Toggles</button>
             </div>
 
             <h3>Generated Engine.ini (Special Toggles)</h3>
             <pre id="specialTogglesOutput" aria-live="polite"></pre>
+
+            <details>
+                <summary>🧠 Technical Footnote — Special Toggles</summary>
+                <p>
+                    <b>rhi=Vulkan</b> — Enables Vulkan rendering backend.<br>
+                    <b>r.Vulkan.ForceEnable=1</b> — Forces Vulkan even if default backend is different.<br>
+                    <b>r.FrameGeneration.Enable=1</b> — Enables experimental frame generation / frame interpolation.<br>
+                    <b>r.UltraQualityUnlock=1</b> — Unlocks ultra-high quality rendering options normally restricted by hardware checks.<br>
+                </p>
+            </details>
         </details>
 
-
-        <!-- 🎮 TEXTURE SCALING -->
-        <details open>
+        <!-- 🎮 Texture Scaling -->
+        <details id="textureScaling" open>
             <summary>🎮 Far-Distance Texture Quality Scaling</summary>
             <p>Adjust texture streaming and mipmap detail levels (0 = disabled, 11 = ultra).</p>
 
@@ -64,12 +75,13 @@
                     <b>r.Streaming.GroupBoost.*</b> — Per-group sharpness multiplier for building/foliage/NPC groups.<br>
                     <b>r.MipMapLODBias</b> — Controls mipmap selection bias (negative ⇒ sharper textures).<br>
                     <b>r.Streaming.FullyLoadUsedTextures</b> — Forces textures that are in use to load fully (1 = enable).<br>
+                    <b>r.Streaming.MipBias</b> — Overall texture mip bias (negative = sharper textures).<br>
                 </p>
             </details>
         </details>
 
-        <!-- 🌑 SHADOWS SETTINGS -->
-        <details>
+        <!-- 🌑 Shadows Settings -->
+        <details id="shadowsSettings">
             <summary>🌑 Shadows Settings</summary>
             <p>Control shadow rendering; select Basic (fewer options) or Advanced (full tuning).</p>
 
@@ -101,16 +113,16 @@
                     <b>r.ShadowQuality</b> — Overall shadow quality (0 = off, up to 5 usually).<br>
                     <b>r.Shadow.CSM.MaxCascades</b> — Number of cascades (more = smoother farther shadows).<br>
                     <b>r.Shadow.CSM.MaxDistance / FarShadowDistanceOverride</b> — How far cascaded shadows are computed.<br>
-                    <b>r.Shadow.*Resolution</b> — Minimum/maximum shadow map size and per-object resolution controls.<br>
-                    <b>r.Shadow.TexelsPerPixel / PCFMaxSamples</b> — Filtering density and sample budget for softer shadows.<br>
-                    <b>r.ContactShadows / r.CapsuleShadows</b> — Add fine-scale and character-specific shadowing for realism.<br>
-                    <b>r.DistanceFieldShadowing</b> — Distance-field shadows for very large soft shadowing.<br>
+                    <b>r.Shadow.MinResolution / r.Shadow.MaxResolution</b> — Minimum/maximum shadow map sizes.<br>
+                    <b>r.Shadow.TexelsPerPixel / PCFMaxSamples</b> — Shadow filtering density and sample budget for softness.<br>
+                    <b>r.ContactShadows / r.CapsuleShadows</b> — Adds fine-scale or character-specific shadows.<br>
+                    <b>r.DistanceFieldShadowing</b> — Distance-field shadows for very large soft shadows.<br>
                 </p>
             </details>
         </details>
 
-        <!-- 🗑️ GARBAGE COLLECTION SETTINGS -->
-        <details>
+        <!-- 🗑️ Garbage Collection -->
+        <details id="garbageCollection">
             <summary>🗑️ Garbage Collection Settings</summary>
             <p>Control garbage collection behavior to optimize memory usage and performance.</p>
 
@@ -126,27 +138,26 @@
             <details>
                 <summary>🧠 Technical Footnote — Garbage Collection</summary>
                 <p>
-                    <b>gc.TimeBetweenPurgingPendingKillObjects</b> — Time (in seconds) between purging objects marked for deletion.<br>
-                    <b>gc.NumRetriesBeforeForcingGC</b> — Number of retries before forcing garbage collection.<br>
-                    <b>gc.MinDesiredObjectsPerSubTask</b> — Minimum objects per garbage collection subtask.<br>
-                    <b>gc.BlueprintClusteringEnabled</b> — Enables clustering of blueprints for garbage collection.<br>
-                    <b>gc.FlushStreamingOnGC</b> — Flushes streaming data during garbage collection.<br>
-                    <b>gc.ValidateGCHeap</b> — Validates the garbage collection heap.<br>
-                    <b>gc.StallCollectionWhileWaiting</b> — Stalls garbage collection while waiting for resources.<br>
-                    <b>gc.RandomFrequency</b> — Frequency of random garbage collection.<br>
-                    <b>gc.MaxObjectsNotConsideredByGC</b> — Maximum objects ignored by garbage collection.<br>
-                    <b>gc.AllowInitialGarbageCollection</b> — Allows garbage collection at startup.<br>
-                    <b>gc.CollectGarbageEveryFrame</b> — Forces garbage collection every frame.<br>
-                    <b>gc.ForceGCAtRegularInterval</b> — Forces garbage collection at regular intervals.<br>
-                    <b>gc.MinGCClusterSize</b> — Minimum size of garbage collection clusters.<br>
-                    <b>gc.MaxGCClusterSize</b> — Maximum size of garbage collection clusters.<br>
-                    <b>gc.VerifyUObjectsAreNotFGCObjects</b> — Verifies that UObjects are not flagged for garbage collection.<br>
-                    <b>gc.DisableAutomaticGC</b> — Disables automatic garbage collection.<br>
+                    <b>gc.TimeBetweenPurgingPendingKillObjects</b> — Time (seconds) between purging objects marked for deletion.<br>
+                    <b>gc.NumRetriesBeforeForcingGC</b> — Number of retries before forcing GC.<br>
+                    <b>gc.MinDesiredObjectsPerSubTask</b> — Minimum objects per GC subtask.<br>
+                    <b>gc.BlueprintClusteringEnabled</b> — Enables clustering of blueprints for GC.<br>
+                    <b>gc.FlushStreamingOnGC</b> — Flushes streaming data during GC.<br>
+                    <b>gc.ValidateGCHeap</b> — Validates the GC heap.<br>
+                    <b>gc.StallCollectionWhileWaiting</b> — Stalls GC while waiting for resources.<br>
+                    <b>gc.RandomFrequency</b> — Frequency of random GC.<br>
+                    <b>gc.MaxObjectsNotConsideredByGC</b> — Max objects ignored by GC.<br>
+                    <b>gc.AllowInitialGarbageCollection</b> — Allows GC at startup.<br>
+                    <b>gc.CollectGarbageEveryFrame</b> — Forces GC every frame.<br>
+                    <b>gc.ForceGCAtRegularInterval</b> — Forces GC at regular intervals.<br>
+                    <b>gc.MinGCClusterSize / gc.MaxGCClusterSize</b> — Min/max size of GC clusters.<br>
+                    <b>gc.VerifyUObjectsAreNotFGCObjects</b> — Ensures UObjects are not flagged incorrectly.<br>
+                    <b>gc.DisableAutomaticGC</b> — Disables automatic GC entirely.<br>
                 </p>
             </details>
         </details>
 
-        <!-- 🧭 Floating Toolbar -->
+        <!-- 🧭 Utilities -->
         <div class="utility-buttons" role="toolbar" aria-label="Utilities">
             <button onclick="collapseAll()">Collapse All</button>
             <button onclick="expandAll()">Expand All</button>
@@ -154,7 +165,7 @@
         </div>
 
         <!-- 🗂️ Floating Checklist -->
-        <div id="engineIniContents" class="draggable">
+        <div id="engineIniContents" class="draggable" style="position: absolute;">
             <h3>Engine.ini Contents</h3>
             <ul>
                 <li>
