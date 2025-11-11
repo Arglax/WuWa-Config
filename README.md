@@ -2,9 +2,8 @@
 <h1 align="center">📢 Announcements 📢</h1>
 
 # Recent Changes:  
-## November 5, 2025  
-> *Added Config_3 under Config_Arglax Folder*  
-> *Updated various READme files*  
+## November 11, 2025  
+> *Added CVars Wiki under Educational Materials Folder* 
 
 Notes:
 > 🛠️ Users are encouraged to use configs in the *Old Configs* folder if the latest ones are incompatible with their devices.  
